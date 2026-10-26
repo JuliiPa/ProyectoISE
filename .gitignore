@@ -1,0 +1,15 @@
+# Ejecutables compilados
+/generadorCSV
+/agentePais
+/servidorISE
+/prueba_receptor
+
+# Archivos objeto
+*.o
+
+# Encuestas generadas
+/encuestas_*.csv
+
+# Archivos temporales
+*.bin
+ise_fifo
