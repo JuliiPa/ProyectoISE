@@ -8,6 +8,9 @@
 
 #define MAX_AGENTES 4
 
+/* Marca en totalEncuestas de un MSG_FIN que genera el servidor, no el agente */
+#define FIN_FORZADO -1
+
 /*
  * Buffer circular acotado. vacios cuenta los espacios libres, llenos los
  * registros disponibles y mutex protege los indices entrada y salida.
@@ -29,6 +32,8 @@ typedef struct {
     AcumuladoPais acumulado;
     long procesadas;
     long descartadas;
+    int completo;
+    sem_t *terminados;
     pthread_t hilo;
 } SlotAgente;
 
@@ -38,6 +43,7 @@ typedef struct {
     int maxAgentes;
     int tamBuffer;
     int conectados;
+    sem_t terminados;
 } GestorBuffers;
 
 int buffer_init(Buffer *b, int capacidad);
@@ -47,8 +53,15 @@ void buffer_destroy(Buffer *b);
 
 int gestor_init(GestorBuffers *g, int maxAgentes, int tamBuffer);
 
-/* Coincide con ProcesarMensaje de receptor.h; datos es un GestorBuffers* */
+/*
+ * Coincide con ProcesarMensaje de receptor.h; datos es un GestorBuffers*.
+ * Retorna distinto de 0 solo en errores graves, porque el receptor se
+ * detiene. Un agente de mas se rechaza con un aviso y se descartan sus mensajes.
+ */
 int gestor_procesar_mensaje(const Mensaje *mensaje, void *datos);
+
+/* Cierra a la fuerza el buffer de cada agente conectado. Llamar con el receptor detenido */
+int gestor_forzar_fin(GestorBuffers *g);
 
 /* Espera a que terminen los hilos procesadores de los agentes conectados */
 int gestor_esperar(GestorBuffers *g);
@@ -59,4 +72,3 @@ void gestor_destruir(GestorBuffers *g);
 void *hilo_procesador(void *argumento);
 
 #endif
-
