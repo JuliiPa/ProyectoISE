@@ -152,12 +152,12 @@ int main(int argc, char *argv[]) {
     Encuesta *encuestas = NULL;
     size_t cantidad = 0, i;
     char pais[3];
-    int fd = -1, idAgente;
+    int fd = -1, idAgente, j;
     Mensaje mensaje = {0};
     long pipe_buf;
     int resultado = EXIT_FAILURE;
 
-    for (int j = 1; j < argc; j++) {
+    for (j = 1; j < argc; j++) {
         if (strcmp(argv[j], "-n") == 0 && j + 1 < argc && !ruta) {
             ruta = argv[++j];
         } else if (strcmp(argv[j], "-p") == 0 && j + 1 < argc && !nombre_fifo) {
@@ -174,8 +174,11 @@ int main(int argc, char *argv[]) {
     if (cargar_csv(ruta, &encuestas, &cantidad, pais) != 0) return EXIT_FAILURE;
 
     idAgente = (int)getpid();
-    signal(SIGPIPE, SIG_IGN);
-    printf("Pais: %s\nPipe: %s\nLeidas %zu encuestas.\n", pais, nombre_fifo, cantidad);
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        perror("Error al ignorar SIGPIPE");
+        goto terminar;
+    }
+    printf("Pais: %s\nPipe: %s\nLeidas %lu encuestas.\n", pais, nombre_fifo, (unsigned long)cantidad);
     printf("Conectando al proceso principal...\n");
     fflush(stdout);
     fd = open(nombre_fifo, O_WRONLY); /* Espera hasta que exista un lector. */
@@ -202,12 +205,12 @@ int main(int argc, char *argv[]) {
         mensaje.sector = encuestas[i].sector;
         mensaje.sentimiento = encuestas[i].sentimiento;
         if (enviar_mensaje(fd, &mensaje) != 0) goto terminar;
-        if ((i + 1) % 500 == 0) printf("  %zu/%zu\n", i + 1, cantidad);
+        if ((i + 1) % 500 == 0) printf("  %lu/%lu\n", (unsigned long)(i + 1), (unsigned long)cantidad);
     }
 
     mensaje.tipo = MSG_FIN;
     if (enviar_mensaje(fd, &mensaje) != 0) goto terminar;
-    printf("Enviadas %zu/%zu encuestas.\n", cantidad, cantidad);
+    printf("Enviadas %lu/%lu encuestas.\n", (unsigned long)cantidad, (unsigned long)cantidad);
     printf("Mensaje de finalizacion enviado.\nEnvio %s finalizado satisfactoriamente.\n", pais);
     resultado = EXIT_SUCCESS;
 
