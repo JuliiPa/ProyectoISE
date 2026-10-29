@@ -114,10 +114,11 @@ static int conectar_agente(GestorBuffers *g, const Mensaje *m)
 {
     SlotAgente *s;
 
-    /* Dos agentes del mismo pais mezclarian sus datos en un solo buffer */
+    /* Un segundo agente del mismo pais mezclaria sus datos con los del primero */
     if (buscar_slot(g, m->pais) != -1) {
-        fprintf(stderr, "Error: el agente %.2s ya esta conectado\n", m->pais);
-        return -1;
+        fprintf(stderr, "Agente %.2s rechazado: ya hay un agente de ese pais\n",
+                m->pais);
+        return 0;
     }
 
     /* Un agente de mas no es fatal: se avisa y se descartan sus mensajes */
@@ -129,6 +130,7 @@ static int conectar_agente(GestorBuffers *g, const Mensaje *m)
 
     s = &g->slots[g->conectados];
     memcpy(s->pais, m->pais, 3);
+    s->idAgente = m->idAgente;
     acum_init(&s->acumulado);
     s->procesadas = 0;
     s->descartadas = 0;
@@ -157,8 +159,9 @@ int gestor_procesar_mensaje(const Mensaje *mensaje, void *datos)
     if (mensaje->tipo != MSG_ENCUESTA && mensaje->tipo != MSG_FIN)
         return -1;
 
+    /* Se descartan los mensajes de agentes rechazados: no son el dueno del buffer */
     i = buscar_slot(g, mensaje->pais);
-    if (i == -1)
+    if (i == -1 || g->slots[i].idAgente != mensaje->idAgente)
         return 0;
 
     /* Bloquea si el buffer esta lleno hasta que el procesador libere espacio */
