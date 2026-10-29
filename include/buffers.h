@@ -29,6 +29,7 @@ typedef struct {
 typedef struct {
     Buffer buffer;
     char pais[3];
+    int idAgente;
     AcumuladoPais acumulado;
     long procesadas;
     long descartadas;
@@ -56,7 +57,8 @@ int gestor_init(GestorBuffers *g, int maxAgentes, int tamBuffer);
 /*
  * Coincide con ProcesarMensaje de receptor.h; datos es un GestorBuffers*.
  * Retorna distinto de 0 solo en errores graves, porque el receptor se
- * detiene. Un agente de mas se rechaza con un aviso y se descartan sus mensajes.
+ * detiene. Un agente de mas, o un segundo agente del mismo pais, se rechaza
+ * con un aviso y se descartan sus mensajes.
  */
 int gestor_procesar_mensaje(const Mensaje *mensaje, void *datos);
 
