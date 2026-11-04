@@ -57,8 +57,9 @@ int gestor_init(GestorBuffers *g, int maxAgentes, int tamBuffer);
 /*
  * Coincide con ProcesarMensaje de receptor.h; datos es un GestorBuffers*.
  * Retorna distinto de 0 solo en errores graves, porque el receptor se
- * detiene. Un agente de mas, o un segundo agente del mismo pais, se rechaza
- * con un aviso y se descartan sus mensajes.
+ * detiene. Cada agente se identifica por su idAgente, asi que puede haber
+ * varios del mismo pais. Un agente por encima de maxAgentes se rechaza con
+ * un aviso y se descartan sus mensajes.
  */
 int gestor_procesar_mensaje(const Mensaje *mensaje, void *datos);
 
