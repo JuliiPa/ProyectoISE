@@ -13,6 +13,15 @@ void acum_init(AcumuladoPais *a)
     }
 }
 
+void acum_sumar(AcumuladoPais *destino, const AcumuladoPais *origen)
+{
+    int i;
+    for (i = 0; i < NUM_SECTORES; i++) {
+        destino->suma[i] += origen->suma[i];
+        destino->cuenta[i] += origen->cuenta[i];
+    }
+}
+
 int acum_agregar(AcumuladoPais *a, int sector, double sentimiento)
 {
     if (sector < 0 || sector >= NUM_SECTORES)
