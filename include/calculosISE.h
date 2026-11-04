@@ -11,6 +11,9 @@ typedef struct {
 
 void acum_init(AcumuladoPais *a);
 
+/* Suma los datos de origen en destino (juntar agentes de un mismo pais) */
+void acum_sumar(AcumuladoPais *destino, const AcumuladoPais *origen);
+
 /* Retorna -1 si el sector o el sentimiento estan fuera de rango */
 int acum_agregar(AcumuladoPais *a, int sector, double sentimiento);
 
