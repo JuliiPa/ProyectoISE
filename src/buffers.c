@@ -99,12 +99,12 @@ int gestor_init(GestorBuffers *g, int maxAgentes, int tamBuffer)
     return 0;
 }
 
-/* Retorna el slot del pais o -1 si no esta conectado */
-static int buscar_slot(const GestorBuffers *g, const char pais[3])
+/* Retorna el slot del agente o -1 si no esta conectado */
+static int buscar_slot(const GestorBuffers *g, int idAgente)
 {
     int i;
     for (i = 0; i < g->conectados; i++) {
-        if (strncmp(g->slots[i].pais, pais, 3) == 0)
+        if (g->slots[i].idAgente == idAgente)
             return i;
     }
     return -1;
@@ -114,17 +114,17 @@ static int conectar_agente(GestorBuffers *g, const Mensaje *m)
 {
     SlotAgente *s;
 
-    /* Un segundo agente del mismo pais mezclaria sus datos con los del primero */
-    if (buscar_slot(g, m->pais) != -1) {
-        fprintf(stderr, "Agente %.2s rechazado: ya hay un agente de ese pais\n",
-                m->pais);
+    /* Varios agentes pueden ser del mismo pais; cada uno se identifica por su id */
+    if (buscar_slot(g, m->idAgente) != -1) {
+        fprintf(stderr, "Agente %d ya estaba conectado: se ignora el MSG_INICIO\n",
+                m->idAgente);
         return 0;
     }
 
     /* Un agente de mas no es fatal: se avisa y se descartan sus mensajes */
     if (g->conectados >= g->maxAgentes) {
-        fprintf(stderr, "Agente %.2s rechazado: ya hay %d agentes\n",
-                m->pais, g->maxAgentes);
+        fprintf(stderr, "Agente %d (%.2s) rechazado: ya hay %d agentes\n",
+                m->idAgente, m->pais, g->maxAgentes);
         return 0;
     }
 
@@ -159,9 +159,9 @@ int gestor_procesar_mensaje(const Mensaje *mensaje, void *datos)
     if (mensaje->tipo != MSG_ENCUESTA && mensaje->tipo != MSG_FIN)
         return -1;
 
-    /* Se descartan los mensajes de agentes rechazados: no son el dueno del buffer */
-    i = buscar_slot(g, mensaje->pais);
-    if (i == -1 || g->slots[i].idAgente != mensaje->idAgente)
+    /* Un agente rechazado no tiene buffer: se descartan sus mensajes */
+    i = buscar_slot(g, mensaje->idAgente);
+    if (i == -1)
         return 0;
 
     /* Bloquea si el buffer esta lleno hasta que el procesador libere espacio */
@@ -178,9 +178,11 @@ void *hilo_procesador(void *argumento)
         if (m.tipo == MSG_FIN) {
             s->completo = (m.totalEncuestas != FIN_FORZADO);
             if (s->completo)
-                printf("Agente %.2s: se recibieron todos los datos\n", s->pais);
+                printf("Agente %d (%.2s): se recibieron todos los datos\n",
+                       s->idAgente, s->pais);
             else
-                printf("Agente %.2s: tiempo agotado, datos incompletos\n", s->pais);
+                printf("Agente %d (%.2s): tiempo agotado, datos incompletos\n",
+                       s->idAgente, s->pais);
             break;
         }
         if (acum_agregar(&s->acumulado, m.sector, m.sentimiento) == 0)
