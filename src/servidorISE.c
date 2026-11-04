@@ -140,36 +140,68 @@ static int esperarAgentes(GestorBuffers *g)
     return 1;
 }
 
+/* Retorna 1 si el pais del slot i aparece por primera vez en la tabla */
+static int primerAgenteDelPais(const GestorBuffers *g, int i)
+{
+    int j;
+    for (j = 0; j < i; j++) {
+        if (strncmp(g->slots[j].pais, g->slots[i].pais, 3) == 0)
+            return 0;
+    }
+    return 1;
+}
+
+/* Los agentes de un mismo pais se juntan en un solo ISE */
 static void imprimirReporte(const GestorBuffers *g)
 {
     double isePaises[MAX_AGENTES];
     double ise, global;
     double prom[NUM_SECTORES];
     int n = 0;
-    int i, j;
+    int i, j, k;
 
     printf("\n===== Resumen ISE =====\n");
 
     for (i = 0; i < g->conectados; i++) {
-        const SlotAgente *s = &g->slots[i];
+        AcumuladoPais total;
+        long procesadas = 0;
+        long descartadas = 0;
+        int agentes = 0;
+        int completo = 1;
 
-        printf("\nPais %.2s (%s)\n", s->pais,
-               s->completo ? "completo" : "incompleto por tiempo");
+        if (!primerAgenteDelPais(g, i))
+            continue;
 
-        if (ise_pais(&s->acumulado, &ise, prom) == -1) {
+        acum_init(&total);
+        for (k = i; k < g->conectados; k++) {
+            const SlotAgente *s = &g->slots[k];
+            if (strncmp(s->pais, g->slots[i].pais, 3) != 0)
+                continue;
+            acum_sumar(&total, &s->acumulado);
+            procesadas += s->procesadas;
+            descartadas += s->descartadas;
+            if (!s->completo)
+                completo = 0;
+            agentes++;
+        }
+
+        printf("\nPais %.2s (%d %s, %s)\n", g->slots[i].pais, agentes,
+               agentes == 1 ? "agente" : "agentes",
+               completo ? "completo" : "incompleto por tiempo");
+
+        if (ise_pais(&total, &ise, prom) == -1) {
             printf("  Sin encuestas\n");
             continue;
         }
 
         for (j = 0; j < NUM_SECTORES; j++) {
-            if (s->acumulado.cuenta[j] > 0)
+            if (total.cuenta[j] > 0)
                 printf("  %-13s %6.2f (%ld encuestas)\n", NOMBRES_SECTOR[j],
-                       prom[j], s->acumulado.cuenta[j]);
+                       prom[j], total.cuenta[j]);
             else
                 printf("  %-13s sin datos\n", NOMBRES_SECTOR[j]);
         }
-        printf("  Procesadas: %ld, descartadas: %ld\n",
-               s->procesadas, s->descartadas);
+        printf("  Procesadas: %ld, descartadas: %ld\n", procesadas, descartadas);
         printf("  ISE: %.4f -> %s\n", ise, recomendacion(ise));
         isePaises[n++] = ise;
     }
